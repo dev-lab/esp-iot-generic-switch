@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<head>
+<meta charset=utf-8>
+<style>
+body {
+	font-family: Arial,"Helvetica Neue",Helvetica,sans-serif;
+	background: #000;
+	color: #88D;
+}
+form {
+	background: #234;
+	display: block;
+	margin: 0 0.5% 0 0.5%;
+}
+table.btn {
+	table-layout: fixed;
+}
+table.btn td:nth-of-type(2) {
+	width:10px;
+}
+</style>
+
+<title>Configure Ports</title>
+<script language="javascript">
+
+function Row(btn) {
+	var name = btn.value, row = btn;
+	while(row.nodeName != "TABLE") row = row.parentNode;
+	while(row.nodeName != "TR") row = row.parentNode;
+	var clone = row.cloneNode(true);
+	var tbody = row;
+	while(tbody.nodeName != "TBODY") tbody = tbody.parentNode;
+
+	var change = function(other) {
+		tbody.insertBefore(clone, other);
+		tbody.removeChild(row);
+		var buttons = gt(clone, "input");
+		for(var i = 0; i < buttons.length; ++i) {
+			if(buttons[i].value == name) {
+				buttons[i].focus();
+				break;
+			}
+		}
+	};
+
+	this.remove = function() {
+		tbody.removeChild(row);
+	};
+
+	this.down = function() {
+		var r = 0, e = row;
+		while(r < 2 && e != null) {
+			e = e.nextSibling;
+			if (e != null && e.nodeName == "TR") ++r;
+		}
+		change(e);
+	};
+
+	this.up = function() {
+		var l = tbody.firstChild;
+		for(var i = l; i != row; ) {
+			l = i;
+			i = i.nextSibling;
+			while (i != null && i.nodeName != "TR")	i = i.nextSibling;
+		}
+		change(l);
+	};
+};
+
+function genLP(d) {
+	var t = hFRow("Label:", hInputT(null, 'l', ''));
+	return (t + hFRow("Port:", hInputT(null, 'p', d?d.p:'1')));
+}
+
+function genLPF(d) {
+	return (genLP(d) + hFRow("View v:", hInputT(null, 'f', 'f - 512')));
+}
+
+function genSwitch(d) {
+	var t = genLP(d);
+	t += hFRow("Inverse:", hInputC(null, 'i', '1', d?(d.i?'checked':null):null));
+	t += hFRow("Default:", hInputC(null, 'v', '1', d?(d.v?'checked':null):null))
+		+ hInputH(null, 't', 'D') + hInputH(null, 'c', 'switch');
+	return hT(hT(t, 'table'), 'form');
+}
+
+function genLevel(d) {
+	var t = genLPF(d);
+	t += hFRow(hInputH(null, 't', 'A') + hInputH(null, 'c', 'level'));
+	return hT(hT(t, 'table'), 'form');
+}
+
+function genLED(d) {
+	var t = genLP(d);
+	t += hFRow("Pull-up:", hInputC(null, 'u', '1', d?(d.u?'checked':null):null)
+		+ hInputH(null, 't', 'D') + hInputH(null, 'c', 'led'));
+	return hT(hT(t, 'table'), 'form');
+}
+
+function genSlider(d) {
+	var t = genLPF(d);
+	t += hFRow("Track:", hInputC(null, 'r', '0', d?(d.r?'checked':null):null));
+	t += hFRow("Default:", hInputT(null, 'v', d?d.v:'0')
+		+ hInputH(null, 't', 'P') + hInputH(null, 'c', 'slider'));
+	return hT(hT(t, 'table'), 'form');
+}
+
+function addCtl(type) {
+	var table = ge("ports");
+	var row = table.insertRow();
+	var cLabel = row.insertCell(0);
+	var cBody = row.insertCell(1);
+	var cUpDown = row.insertCell(2);
+	var cDel = row.insertCell(3);
+	cLabel.innerHTML = hB(type.length > 3 ? type.substring(0, 1).toUpperCase() + type.substring(1) : type.toUpperCase());
+	var t = hTr(hTd(hInputB(null, null, " /\\ ", 'onclick="new Row(this).up();"')) + hTd(" ")
+		+ hT(hInputB(null, null, " X ", 'onclick="new Row(this).remove();" tabindex="-1"'), "td", 'rowspan="2"'));
+	t += hTr(hTd(hInputB(null, null, " \\/ ", 'onclick="new Row(this).down();"')));
+	cUpDown.innerHTML = hT(t, 'table', 'class="btn"');
+	return cBody;
+}
+
+function getGenF(t) {
+	if(!t) return null;
+	var f = null;
+	switch(t) {
+	case "switch":
+		f = genSwitch;
+		break;
+	case "level":
+		f = genLevel;
+		break;
+	case "slider":
+		f = genSlider;
+		break;
+	case "led":
+		f = genLED;
+		break;
+	default:
+		break;
+	}
+	return f;
+}
+function addControl() {
+	var tc = ge("nc");
+	if(!tc) return;
+	var t = tc.value;
+	var f = getGenF(t);
+	if(!f) return;
+	var c = addCtl(t);
+	c.innerHTML = f();
+}
+
+var State = function(c) {
+	this.cfg = (c ? c : {gpio:[]});
+};
+
+State.prototype = {
+getByPortName : function(p) {
+	if (typeof p === 'string' || p instanceof String) p = Number(p.substr(1));
+	for(var i = 0; i < this.cfg.gpio.length; ++i) {
+		var d = this.cfg.gpio[i];
+		if(!d) continue;
+		if(d.p == p) return d;
+	}
+	return null;
+},
+
+render : function() {
+	ge("ports").innerHTML = "";
+	for(var i = 0; i < this.cfg.gpio.length; ++i) {
+		var d = this.cfg.gpio[i];
+		if(!d || !d.c) continue;
+		var f = getGenF(d.c);
+		if(!f) continue;
+		var c = addCtl(d.c);
+		c.innerHTML = f(d);
+		var fc = gt(c, "form")[0];
+		fc.elements["l"].value = duri(d.l);
+		var ff = fc.elements["f"]
+		if(ff) ff.value = d.f?duri(d.f):'';
+	}
+},
+
+};
+
+function onBodyLoad() {
+	var r = ge("stat");
+	http("/ports.json", null, function(re, s) {
+		var cfg = null;
+		if(s == 200) {
+			cfg = eval('(' + re + ')');
+			r.innerHTML = "";
+		} else {
+			r.innerHTML = re;
+		}
+		state = new State(cfg);
+		state.render();
+	});
+}
+
+function submit() {
+	var r = ge("stat");
+	var js = [];
+	var lu = [];
+	var table = ge("ports");
+	var forms = gt(table, "form");
+	js.push('{"gpio":[\n');
+	var n = false;
+	for(var f = 0; f < forms.length; ++f) {
+		var form = forms[f];
+		if(!form) continue;
+		if(n) js.push(',\n');
+		js.push(getFormJson(form));
+		n = true;
+	}
+	js.push("\n]}");
+	upload("ports.json", js.join(""), function(r) {
+		if(r) {
+			var cfg = eval('(' + js.join("") + ')');
+			if(cfg && cfg.gpio) {
+				state = new State(cfg);
+				state.render();
+			}
+		}
+	});
+}
+
+</script>
+</head>
+
+<body>
+<h4><div id="stat">Loading...</div></h4>
+<table><tr>
+	<td>New Control:</td>
+	<td><select id="nc">
+		<option value="switch">Switch (digital out)</option>
+		<option value="slider">Slider (PWM out)</option>
+		<option value="led">LED (digital in)</option>
+		<option value="level">Level (analog in)</option>
+	</select></td>
+	<td><input type="button" value="Add" onclick="addControl();"/></td>
+</tr></table>
+<table id="ports"/>
+<table><tr>
+	<td><input type="button" value="Submit" onclick="submit();"/></td>
+</tr></table>
+<script language="javascript">
+window.onload = function() {
+	var j = document.createElement("script");
+	j.src = "ju.js";
+	j.onload = onBodyLoad;
+	document.body.appendChild(j);
+};
+</script>
+</body>

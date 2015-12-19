@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<head>
+<meta charset=utf-8>
+<style>
+body {
+	font-family: Arial,"Helvetica Neue",Helvetica,sans-serif;
+	background: #000;
+	color: #88D;
+}
+
+table#tCmd tr:nth-child(even) {
+	background-color: #eee;
+}
+table#tCmd tr:nth-child(odd) {
+	background-color:#fff;
+}
+table#tCmd th {
+	background-color: blue;
+	color: white;
+}
+</style>
+<title>UART</title>
+<script language="javascript">
+
+var cmdId = 0;
+
+function uartCheck(inputElement, event) {
+	if(event.keyCode == 13) {
+		uart();
+	}
+}
+
+function uart() {
+	var cmd = ge("cmd").value;
+	var row = ge("tCmd").insertRow(1);
+	var cId = row.insertCell(0);
+	var cTime = row.insertCell(1);
+	var cCmd = row.insertCell(2);
+	var cOut = row.insertCell(3);
+	var cHeap = row.insertCell(4);
+	cId.innerHTML = ++cmdId;
+	cTime.innerHTML = getTimestamp();
+	cCmd.innerHTML = cmd;
+	http("/send?cmd=" + uri(cmd), null, function(re, s) {
+		if(s == 200) {
+			var ra = re.split('\n');
+			cOut.innerHTML = ra[1];
+			cHeap.innerHTML = ra[0];
+		} else {
+			cOut.innerHTML = re;
+		}
+	});
+}
+
+function onBodyLoad() {
+	ge("cmd").focus();
+}
+</script>
+</head>
+<body>
+<h2>Send command through UART port:</h2>
+<br/>
+Command: <input type="text" id="cmd" onkeypress="uartCheck(this, event);"/>
+<button type="button" onClick="uart();">Submit</button><br/><br/>
+<table id="tCmd">
+<tr><th>ID</th><th>Time</th><th>Command</th><th>Output</th><th>Heap</th></tr>
+</table>
+<script language="javascript">
+window.onload = function() {
+	var j = document.createElement("script");
+	j.src = "ju.js";
+	j.onload = onBodyLoad;
+	document.body.appendChild(j);
+};
+</script>
+</body>

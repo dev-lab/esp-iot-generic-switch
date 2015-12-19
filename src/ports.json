@@ -1,0 +1,5 @@
+{"gpio":[
+{"l":"Arduino%20LED","p":13,"t":"D","c":"switch"},
+{"l":"Socket%201","p":2,"i":1,"t":"D","c":"switch"},
+{"l":"Socket%202","p":4,"i":1,"t":"D","c":"switch"}
+]}

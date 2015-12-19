@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<head>
+<meta charset=utf-8>
+<style>
+body {
+	font-family: Arial,"Helvetica Neue",Helvetica,sans-serif;
+	background: #000;
+	color: #88D;
+}
+
+.slider {
+	position:relative;
+	width:140px;
+	top:10px;
+	height:20px;
+	border:1px solid #555;
+	cursor:pointer;
+}
+
+.track {
+	position:absolute;
+	width:0%;
+	height:100%;
+	background-color: #55E;
+	top:0px;
+	left:0px;
+}
+
+.thumb {
+	position:absolute;
+	width: 20px;
+	height: 200%;
+	top: -50%;
+	right: -9px;
+	border:1px solid #555;
+	background-color: #EEE;
+}
+
+.led {
+	border: 12px solid #000;
+	width: 16px;
+	height: 16px;
+	background: #4A1500;
+	-webkit-border-radius: 20px;
+	-moz-border-radius: 20px;
+	border-radius: 20px;
+	-webkit-background-clip:padding-box;
+	-moz-background-clip:	padding;
+	background-clip:	padding-box;
+}
+.ctl th, .ctl td {
+	margin:0 0 0 0;
+	height:40px;
+	position:relative;
+	line-height:40px;
+}
+.ctl th {
+	text-align: left;
+}
+.switch td {
+	float:left;
+	width:70px;
+	text-align: center;
+}
+.ctlwide td {
+	float:left;
+}
+.info {
+	color: #00E040;
+	padding-left: 15px;
+	font-size: 120%;
+}
+
+.switch label, .switch input {
+	display:block;
+	position:absolute;
+	top:0;
+	left:0;
+	right:0;
+	bottom:0;
+}
+
+.switch input[type="radio"] {
+	display:none;
+	z-index:100;
+}
+
+.switch input[type="radio"]:checked + label,
+.Checked + label {
+	background: #55E;
+	color: white;
+}
+
+.switch label {
+	border:1px solid #555;
+	cursor:pointer;
+	z-index:90;
+}
+
+.switch label:hover {
+	background-color: #338;
+}
+</style>
+<title>Control</title>
+<script language="javascript">
+
+function uart(cmd, handler) {
+	http("/send?cmd=" + uri(cmd), null, handler);
+}
+
+function switchClickR(r, id, v) {
+	ge(id).style.background = (v ? "#E04000" : "#4A1500");
+}
+
+var State = function(c) {
+	this.cfg = (c ? c : {gpio:[]});
+};
+
+State.prototype = {
+
+getByPortName : function(p) {
+	if (typeof p === 'string' || p instanceof String) p = Number(p.substr(1));
+	for(var i = 0; i < this.cfg.gpio.length; ++i) {
+		var d = this.cfg.gpio[i];
+		if(!d) continue;
+		if(d.p == p) return d;
+	}
+	return null;
+},
+
+render : function() {
+	var r = ge("cmds");
+	var h = [];
+	var s = [];
+	h.push('<table>');
+	for(var i = 0; i < this.cfg.gpio.length; ++i) {
+		var d = this.cfg.gpio[i];
+		if(!d || !d.c) continue;
+		switch(d.c) {
+		case "switch":
+			this.renderSwitch(d,h,s);
+			break;
+		case "led":
+			this.renderLED(d,h,s);
+			break;
+		case "slider":
+			this.renderSlider(d,h,s,false);
+			break;
+		case "level":
+			this.renderSlider(d,h,s,true);
+			break;
+		default:
+		}
+	}
+	h.push('</table>');
+	r.innerHTML = h.join('\n');
+	for(var i = 0; i < s.length; ++i) {
+		s[i]();
+	}
+},
+
+updateSwitch : function(d) {
+	var p = "P" + d.p;
+	var v = (d.i ? (d.v ? false : true): (d.v ? true : false));
+	ge(p + "-on").checked = v;
+	ge(p + "-off").checked = !v;
+	ge(p + "-led").style.background = (v ? "#E04000" : "#4A1500");
+},
+
+genLabel : function(d) {
+	return hT(duri(d.l), 'th');
+},
+
+genLED : function(p, v) {
+	return hTd(hT(null, "div", hArg("id", p + "-led") + hArg("class", "led") + hArg("style", v?"background: #E04000;":null)));
+},
+
+renderSwitch : function(d,h,s) {
+	var p = "P" + d.p;
+	var v = (d.i ? (d.v ? 0 : 1): (d.v ? 1 : 0));
+	var vN = (v ? 0 : 1);
+	var ec = "state.switchClick(this);";
+	h.push(hTr(this.genLabel(d)
+		+ hTd(hRadio("On", (d.i ? 0 : 1), p + "-on", p, v, ec))
+		+ hTd(hRadio("Off", (d.i ? 1 : 0), p + "-off", p, vN, ec))
+		+ this.genLED(p, v),
+		'class="ctl switch"'));
+},
+
+renderLED : function(d,h,s) {
+	var p = "P" + d.p;
+	h.push(hTr(this.genLabel(d)
+		+ hTd() + hTd() + this.genLED(p, d.v),
+		'class="ctl switch"'));
+},
+
+renderSlider : function(d,h,s,ro) {
+	var p = "P" + d.p;
+	var ps = p + "-slider";
+	var pi = p + "-info";
+	h.push(hTr(this.genLabel(d)
+		+ hTd(hT(null, "div", hArg("id", ps)))
+		+ hT(null, "td", hArg("id", pi) + hArg("class", "info")),
+		'class="ctl ctlwide"'));
+	s.push(function() {
+		var info = ge(pi);
+		var iv = d.v / 1023.0;
+		var rt = d.r;
+		var w = false;
+		var v0 = iv, v = iv;
+		var f = empty(d.f) ? null : duri(d.f);
+		bar = new Slider({container : ge(ps),
+			value : iv,
+			readOnly : ro,
+			onChange : function(vc, stop) {
+				v = (vc * 1023.0).toFixed(0);
+				try {
+					info.innerHTML = (f ? eval(f) : v);
+				} catch(e) {
+					info.innerHTML = e;
+				}
+				if((stop || rt) && !w && (v0 != v)) {
+					function hs(re, s) {
+						if(rt && (v0 != v)) {
+							send();
+						} else {
+							w = false;
+						}
+					};
+					function send() {
+						w = true;
+						v0 = v;
+						var c = "PS " + p + " V" + v0;
+						uart(c, hs);
+					};
+					send();
+				}
+			},
+		});
+	});
+},
+
+switchClick : function(r) {
+	var c = "DS " + r.name + " V" + r.value;
+	var st = this;
+	uart(c, function(re, s) {
+		var d = st.getByPortName(r.name);
+		if(s == 200) d.v = Number(r.value);
+		if(d) st.updateSwitch(d);
+	});
+},
+
+};
+
+var Slider = function(cfg) {
+	var s, bwi, bpk, bpo, r, t, tw, tX, p, x, oc, rect, that = this;
+
+	function init() {
+		var id = cfg.container.id;
+		s = ce('slider');
+		s.id = id + "-s";
+		r = ce('track');
+		r.id = id + "-r";
+		s.appendChild(r);
+		t = ce('thumb');
+		t.id = id + "-t";
+		if(cfg.readOnly) t.style.backgroundColor = "#000";
+		r.appendChild(t);
+		cfg.container.appendChild(s);
+		tw = t.clientWidth / 2;
+		bwi = s.clientWidth - (tw * 2);
+		bpk = bwi / s.clientWidth;
+		bpo = tw / bwi;
+		updateRO();
+
+		if(cfg.value) {
+			that.set(cfg.value);
+		}
+	};
+
+	function updateX() {
+		p = (((x - rect.left - tX))/ bwi).toFixed(4);
+		update();
+	};
+
+	function update() {
+		p = (p > 1 ? 1 : (p < 0 ? 0 : p));
+		p1 = ((p * bpk) + bpo).toFixed(4);
+		r.style.width = (p1 * 100) + '%';
+		onChange(false);
+	};
+
+	function updateRO() {
+		s.removeEventListener('mousedown', start, false);
+		if(cfg.readOnly) {
+			s.style.cursor = 'auto';
+		} else {
+			s.addEventListener('mousedown', start, false);
+			s.style.cursor = 'pointer';
+		}
+	};
+
+	function start(e) {
+		rect = s.getBoundingClientRect();
+		tX = (e.target == t) ? ((e.offsetX == undefined ? e.layerX : e.offsetX) + 1) : tw;
+		x = e.clientX;
+		dc.addEventListener('mousemove', move, false);
+		dc.addEventListener('mouseup', stop, false);
+		updateX();
+	};
+
+	function move(e){
+		x = e.clientX;
+		updateX();
+	};
+
+	function stop(e) {
+		dc.removeEventListener('mousemove', move, false);
+		dc.removeEventListener('mouseup', stop, false);
+		onChange(true);
+	};
+
+
+	function onChange(stop) {
+		if(cfg.onChange) cfg.onChange(p, stop);
+	};
+
+	this.set = function(value) {
+		p = value.toFixed(4);
+		update();
+	};
+
+	this.get = function() {
+		return p;
+	};
+
+	this.readOnly = function(value) {
+		cfg.readOnly = value;
+		updateRO();
+	};
+
+	init();
+};
+
+function onBodyLoad() {
+	http("/pState", null, function(re, s) {
+		ge("stat").innerHTML = (s == 200) ? "" : re;
+		var cfg = (s == 200) ? eval('(' + re + ')') : null;
+		state = new State(cfg);
+		state.render();
+	});
+}
+
+</script>
+</head>
+<body>
+<h4><div id="stat"/></h4>
+<section><div id="cmds"/></section>
+<script language="javascript">
+window.onload = function() {
+	var j = document.createElement("script");
+	j.src = "ju.js";
+	j.onload = onBodyLoad;
+	document.body.appendChild(j);
+};
+</script>
+</body>
