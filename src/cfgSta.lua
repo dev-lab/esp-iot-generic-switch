@@ -43,7 +43,6 @@ return function(co,p,u)
 			c:send(',"stat":'..cjson.encode(s)..'}')
 			s = nil
 		else
-			c:on("sent", function() end)
 			c:close()
 			c = nil
 		end
@@ -55,7 +54,5 @@ return function(co,p,u)
 		aa = nil
 		collectgarbage()
 		require("rs")(co, 200, '{"aps":', "application/json")
-		collectgarbage()
 	end)
-	collectgarbage()
 end

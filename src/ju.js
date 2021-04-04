@@ -1,30 +1,32 @@
 function StringBuffer() {
-	this.res = [];
+var r = [];
+
+function p(v) {
+	if(v) r.push(v);
 }
-StringBuffer.prototype = {
+
+function pp(v, len, ch) {
+	if(!ch) ch = '0';
+	v = (v ? v.toString() : "");
+	if(v.length < len) {
+		for(var i = v.length; i < len; ++i) p(ch);
+	}
+	p(v);
+}
+
+function p1(v, l, s) {
+	pp(v, l);
+	p(s);
+}
+
+return {
 	toString : function() {
-		return this.res.join('');
+		return r.join('');
 	},
-	push : function(v) {
-		if(v) this.res.push(v);
-	},
-	pushPadded : function(v, len, ch) {
-		if(!ch) ch = '0';
-		v = (v ? v.toString() : "");
-		if(v.length < len) {
-			for(var i = v.length; i < len; ++i) {
-				this.push(ch);
-			}
-		}
-		this.push(v);
-	},
+	push : p,
+	pushPadded : pp,
 	pushTimestamp : function() {
 		var d = new Date();
-		var t = this;
-		function p1(v, l, s) {
-			t.pushPadded(v, l);
-			t.push(s);
-		}
 		p1(d.getDate(), 2, '.');
 		p1(d.getMonth() + 1, 2, '.');
 		p1(d.getFullYear(), 4, ' ');
@@ -32,11 +34,12 @@ StringBuffer.prototype = {
 		p1(d.getMinutes(), 2, ':');
 		p1(d.getSeconds(), 2, ':');
 		p1(d.getMilliseconds(), 3);
-	},
-}
+	}
+};
+};
 
 function getTimestamp() {
-	var b = new StringBuffer();
+	var b = StringBuffer();
 	b.pushTimestamp();
 	return b.toString();
 }
@@ -69,7 +72,7 @@ function http(u, b, f) {
 			f("" + s + ": " + t, s);
 		}
 	});
-	q.open(b ? "POST" : "GET", u, true);
+	q.open(b != null ? "POST" : "GET", u, true);
 	try {
 		q.send(b);
 	} catch(e) {
@@ -134,6 +137,13 @@ function euri(v) {return encodeURIComponent(v);}
 function duri(v) {return decodeURIComponent(v);}
 function uri(v) {return euri(v).replace(/%20/g,'+');}
 function escp(v) {return v.replace(/\\/g,'\\\\').replace(/\"/g,'\\\"');}
+function sh(e,v) {e.innerHTML = v;}
+function gv(e) {return e.value;}
+function sv(e,v) {e.value = v;}
+function ric(r) {
+	var i = 0;
+	return function() {return r.insertCell(i++);};
+}
 
 function getFormValue(e) {
 	var t = null;
@@ -144,19 +154,19 @@ function getFormValue(e) {
 	switch(t) {
 	case 'radio':
 		for(var i = 0; i < e.length; ++i) {
-			if(e[i].checked) return e[i].value;
+			if(e[i].checked) return gv(e[i]);
 		}
 		return null;
 	case 'select-multiple':
 		var r = [];
 		for(var i = 0; i < e.length; ++i) {
-			if(e[i].selected) r.push(e[i].value);
+			if(e[i].selected) r.push(gv(e[i]));
 		}
 		return r.join(',');
 	case 'checkbox':
 		return e.checked;
 	default:
-		return e.value;
+		return gv(e);
 	}
 }
 
@@ -184,7 +194,7 @@ function getForm(f, m, eq) {
 		} else if(v === false) {
 			p(0);
 		} else if(typeof v.replace === 'undefined') {
-		        p(v);
+			p(v);
 		} else {
 			var t = getEncodeType(e.name);
 			if(t > 0) {
@@ -210,10 +220,9 @@ function postForm(f, u, v, vv, r, h, m) {
 	var d = getFormJson(f, m);
 	http(u, d, function(re, s) {
 		if(!empty(r)) {
-			ge(r).value = re;
+			sh(ge(r), re);
 		}
 		if(h) h(re, s);
 	});
 	return false;
 }
-

@@ -2,21 +2,23 @@ local z = ...
 
 local function getCfg()
 	local c = {}
-	if file.open("esp.cfg", "r") then
-		c = cjson.decode(file.read())
+	local f = file.open("esp.cfg")
+	if f then
+		c = cjson.decode(f:read())
 		cfg[1] = c.aPwd
 		cfg[2] = c.uPwd
-		file.close()
+		f:close(); f = nil
 		collectgarbage()
 	end
 	return c
 end
 
 local function setCfg(c)
-	if file.open("esp.cfg", "w+") then
-		file.write(cjson.encode(c))
-		file.flush()
-		file.close()
+	local f = file.open("esp.cfg", "w+")
+	if f then
+		f:write(cjson.encode(c))
+		f:flush()
+		f:close(); f = nil
 		collectgarbage()
 	end
 end
@@ -25,7 +27,7 @@ return function(p)
 	package.loaded[z] = nil
 	z = nil
 	local c = getCfg()
-	if not p then return c, nil, 200 end
+	if not p then return c, "", 200 end
 	local d = {}
 	if p.file then d = cjson.decode(p.file) end
 	local m = p.m
@@ -41,9 +43,11 @@ return function(p)
 		c.sta = d.opt
 		c.ssid = d.ssid
 		c.pwd = d.pwd
-		tmr.alarm(2,2000,0,function()
+		local t = tmr.create()
+		t:register(2000,0,function(t)
 			node.restart()
 		end)
+		t:start()
 		r = "Setting AP: "..(c.ssid or "").." ..."
 	elseif m == "admin" then
 		if d.old ~= c.aPwd then

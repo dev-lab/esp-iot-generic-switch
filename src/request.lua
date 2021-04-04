@@ -39,8 +39,9 @@ return function(q)
 		vs = nil
 	end
 	local _, _, _, e = p:find("(.*)%.(%w*)%c*$")
+	if not e and m == "GET" then e = "" end
 	m = nil
 	h = nil
 	collectgarbage()
-        return p, e, u, g
+	return p, e, u, g
 end

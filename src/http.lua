@@ -6,7 +6,6 @@ w:listen(80, function(co)
 		q = nil
 		if u > 9 then return end
 		c:on("sent", function(ci)
-			ci:on("sent",function() end)
 			ci:close()
 			ci = nil
 			collectgarbage()
@@ -15,11 +14,13 @@ w:listen(80, function(co)
 		if u > 2 then
 			require("rs")(c, 401)
 		elseif not e then
-			tmr.alarm(3,100,0,function()
+			local t = tmr.create()
+			t:register(100,0,function(t)
 				if not pcall(function() require(p)(c, g, u) end) then
 					require("rs")(c, 404)
 				end
 			end)
+			t:start()
 		else
 			g = nil
 			require("respFile")(c, p, e)

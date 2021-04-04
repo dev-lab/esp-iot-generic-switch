@@ -6,9 +6,7 @@ return function(co, d)
 	local e = false
 	co:on("sent", function(c)
 		tmr.wdclr()
-		collectgarbage()
 		if e then
-			c:on("sent",function() end)
 			c:close()
 			c = nil
 			collectgarbage()
@@ -19,6 +17,6 @@ return function(co, d)
 		e = true
 		collectgarbage()
 	end)
-	require("rs")(co, 200, nil, "application/json")
+	require("rs")(co, 200, "", "application/json")
 	collectgarbage()
 end

@@ -1,21 +1,39 @@
 local z = ...
 
-local function save(v)
-	if v == nil then return "Nothing" end
-	return require("fSaveI")(v)
+local function save(v, fc)
+	if v == nil then
+		fc("Nothing")
+		return
+	end
+	if not v.name or not v.file then
+		fc("File body missing")
+		return
+	end
+	local p = tonumber(v.pos)
+	if p == 0 then p = nil end
+	if not p then
+		file.remove("-~"..v.name)
+	end
+	local rm, _, _ = file.fsinfo()
+	if (rm - (p and 1 or 500) - 5000) < #v.file then
+		fc("Not enough space on disk")
+		return
+	end
+	p = nil
+	rm = nil
+	collectgarbage()
+	tmr.wdclr()
+	require("fSaveI")(v, fc)
 end
 
 local function after(c, v)
 	local rs = true
 	if v.name == "ports.json" and v.flush == "1" then
-		file.open("ports.json", "r")
-		local d = cjson.decode(file.read()).gpio
-		file.close()
-		tmr.alarm(4,200,0,function() require("pUpdate")(d) end)
+		require("fpUpdate")()
 	end
 	v = nil
 	collectgarbage()
-	require("rs")(c, 200)
+	require("rs")(c, 200, "")
 end
 
 return function(c,v,u)
@@ -25,11 +43,12 @@ return function(c,v,u)
 	if u > 1 then
 		require("rs")(c, 401)
 	else
-		local er = save(v)
-		if er == nil then
-			after(c, v)
-		else
-			require("rs")(c, 403, "Not saved: "..er)
-		end
+		save(v, function(er)
+			if er == nil then
+				after(c, v)
+			else
+				require("rs")(c, 403, "Not saved: "..er)
+			end
+		end)
 	end
 end

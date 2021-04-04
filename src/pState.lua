@@ -1,53 +1,54 @@
 local z = ...
 
 local function tx(s, f)
-	if not s then return end
 	uart.on("data", "\n", f, 0)
 	uart.write(0, s.."\n")
 end
 
 local function loadP(p, f)
-	if p.t then
-		tx(p.t.."G P"..(p.p or "0"), function(v)
-			uart.on("data")
-			if v and #v > 4 then
-				v = v:sub(5)
-				p.v = tonumber(v)
-			else
-				p.v = 0
-			end
-			v = nil
-			collectgarbage()
-			f()
-		end)
-	else
+	if not p.t then
 		f()
+		return
 	end
+	tx(p.t.."G P"..(p.p or "0"), function(v)
+		uart.on("data")
+		if v and #v > 4 then
+			v = v:sub(5)
+			p.v = tonumber(v)
+		else
+			p.v = 0
+		end
+		v = nil
+		collectgarbage()
+		f()
+	end)
 end
 
 return function(co,p)
 	package.loaded[z] = nil
 	z = nil
 	p = nil
-	file.open("ports.json", "r")
-	local d = cjson.decode(file.read())
-	file.close()
+	local fp = file.open("ports.json")
+	local d = cjson.decode(fp:read())
+	fp:close(); fp = nil
 	local gp = d.gpio
 	tmr.wdclr()
-	collectgarbage()
+	local x = 1
 	local i = #gp + 1
-	local function fo()
-		tmr.wdclr()
-		collectgarbage()
+	local t = tmr.create()
+	t:register(10, 1, function(t)
+		if not x then return end
+		x = nil
 		i = i - 1
 		if i > 0 then
-			loadP(gp[i], fo)
+			loadP(gp[i], function() x = 1 end)
 		else
+			t:unregister()
 			loadP = nil
 			tx = nil
 			collectgarbage()
 			require("sendJson")(co,d)
 		end
-	end
-	fo()
+	end)
+	t:start()
 end

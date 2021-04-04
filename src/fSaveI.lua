@@ -1,59 +1,76 @@
 local z = ...
 
-return function(v)
+return function(v, fc)
 	package.loaded[z] = nil
 	z = nil
 	local n = v.name
 	local p = tonumber(v.pos)
-	if p == 0 then p = nil end
+	if not p then p = 0 end
 	local f = v.file
 	local fl = tonumber(v.flush)
 	if fl == 0 then fl = nil end
-	if not n or not f then return "File body missing" end
+	v = nil
+	collectgarbage()
 	local n1 = "~"..n
 	local n2 = "-"..n1
-	if not p then
-		file.remove(n2)
+	local f2 = file.open(n2, "a")
+	if not f2 then
+		fc("Can't open file: "..n2)
+		return
 	end
-	local rm, _, _ = file.fsinfo()
-	if (rm - (p and 1 or 500)) < #f then
-		return "Not enough space on disk"
-	end
-	file.open(n2, "a")
 	if p ~= nil and p > 0 then
-		local cur = file.seek("end")
+		local cur = f2:seek("end")
 		if cur ~= p then
-			file.close()
-			return "File seek error, pos: "..p..", cur: "..(cur or "nil")
+			f2:close(); f2 = nil
+			fc("File seek error, pos: "..p..", cur: "..(cur or "nil"))
+			return
 		end
 	end
-	if not file.write(f) then
-		file.seek("set", p)
-		if not file.write(f) then
-			file.close()
-			return "File write error, pos: "..p
+	function fc2()
+		n1 = nil
+		n2 = nil
+		n = nil
+		f = nil
+		collectgarbage()
+		fc(nil)
+	end
+	function fc1()
+		f2:close(); f2 = nil
+		if fl then
+			local t = tmr.create()
+			t:register(50,0,function()
+				if file.exists(n) then
+					file.remove(n1)
+					file.rename(n, n1)
+				end
+				if not file.rename(n2, n) then
+					if not file.rename(n2, n) then
+						file.rename(n1, n)
+						fc("File rename error")
+						return
+					end
+				end
+				file.remove(n1)
+				fc2()
+			end)
+			t:start()
+		else
+			fc2()
 		end
 	end
-	file.flush()
-	file.close()
-	if fl == 1 then
-		if file.open(n) then
-			file.close()
-			file.remove(n1)
-			file.rename(n, n1)
-		end
-		if not file.rename(n2, n) then
-			if not file.rename(n2, n) then
-				file.rename(n1, n)
-				return "File rename error"
+	if not f2:write(f) then
+		local t = tmr.create()
+		t:register(50,0,function()
+			local cur = f2:seek("set", p)
+			if cur ~= p or not f2:write(f) then
+				f2:close(); f2 = nil
+				fc("File write error, pos: "..p)
+			else
+				fc1()
 			end
-		end
-		file.remove(n1)
+		end)
+		t:start()
+	else
+		fc1()
 	end
-	n1 = nil
-	n2 = nil
-	n = nil
-	f = nil
-	collectgarbage()
-	return nil
 end
