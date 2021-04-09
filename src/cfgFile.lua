@@ -1,32 +1,30 @@
 local z = ...
 
-local function getCfg()
+local function getCf()
 	local c = {}
 	local f = file.open("esp.cfg")
 	if f then
 		c = cjson.decode(f:read())
-		cfg[1] = c.aPwd
-		cfg[2] = c.uPwd
+		cf[1] = c.aPwd
+		cf[2] = c.uPwd
 		f:close(); f = nil
-		collectgarbage()
 	end
 	return c
 end
 
-local function setCfg(c)
+local function setCf(c)
 	local f = file.open("esp.cfg", "w+")
 	if f then
 		f:write(cjson.encode(c))
 		f:flush()
 		f:close(); f = nil
-		collectgarbage()
 	end
 end
 
 return function(p)
 	package.loaded[z] = nil
 	z = nil
-	local c = getCfg()
+	local c = getCf()
 	if not p then return c, "", 200 end
 	local d = {}
 	if p.file then d = cjson.decode(p.file) end
@@ -54,11 +52,11 @@ return function(p)
 			return c, "Old password wrong", 403
 		end
 		c.aPwd = d.pwd
-		cfg[1] = c.aPwd
+		cf[1] = c.aPwd
 		r = "Password changed for admin"
 	elseif m == "user" then
 		c.uPwd = d.pwd
-		cfg[2] = c.uPwd
+		cf[2] = c.uPwd
 		r = "Password changed for user"
 	else
 		return c, "Unknown cfg", 403
@@ -66,6 +64,6 @@ return function(p)
 	d = nil
 	m = nil
 	collectgarbage()
-	setCfg(c)
+	setCf(c)
 	return c, r, 200
 end

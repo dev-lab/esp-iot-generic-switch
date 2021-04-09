@@ -11,8 +11,6 @@ return function(co,p,u)
 	local st = true
 	local a = nil
 	co:on("sent", function(c)
-		collectgarbage()
-		tmr.wdclr()
 		if a then
 			if #a > 1024 then
 				c:send(a:sub(1, 1024))
@@ -48,11 +46,9 @@ return function(co,p,u)
 		end
 		collectgarbage()
 	end)
-	wifi.sta.getap(function (aa)
-		tmr.wdclr()
-		a = cjson.encode(aa)
-		aa = nil
-		collectgarbage()
+	wifi.sta.getap(function (b)
+		a = cjson.encode(b)
+		b = nil
 		require("rs")(co, 200, '{"aps":', "application/json")
 	end)
 end

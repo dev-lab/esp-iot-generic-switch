@@ -9,11 +9,9 @@ return function(co, p, e)
 	local o = 0
 	if m and file.exists(p) then
 		co:on("sent", function(c)
-			tmr.wdclr()
 			if not p then
 				c:close()
 				c = nil
-				collectgarbage()
 				return
 			end
 			local f1 = file.open(p)

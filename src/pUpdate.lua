@@ -5,13 +5,16 @@ local function isI(c)
 end
 
 local function tx(s, f)
-	if not s then return end
-	uart.on("data", "\n", f, 0)
+	uart.on("data", "\n", function(v)
+		v = nil
+		uart.on("data")
+		f()
+	end, 0)
 	uart.write(0, s.."\n")
 end
 
 local function storeP(p, f)
-	if not p or p.t == "A" then f(nil) return end
+	if not p or p.t == "A" then f() return end
 	if not p.p then p.p = 0 end
 	local r = "CE P"..p.p
 	if isI(p.c) then
@@ -19,13 +22,11 @@ local function storeP(p, f)
 	else
 		r = r.." O"..p.t
 	end
-	tx(r, function(x)
-		x = nil
-		uart.on("data")
+	tx(r, function()
 		if not isI(p.c) then
 			tx(p.t.."E P"..p.p.." V"..(p.v or "0"), f)
 		else
-			f(nil)
+			f()
 		end
 	end)
 end
@@ -33,19 +34,21 @@ end
 return function(d)
 	package.loaded[z] = nil
 	z = nil
-	collectgarbage()
+	local x = 1
 	local i = #d + 1
-	local function f(x)
+	local t = tmr.create()
+	t:register(10, 1, function(t)
+		if not x then return end
 		x = nil
 		i = i - 1
-		uart.on("data")
 		collectgarbage()
 		if i > 0 then
-			storeP(d[i], f)
+			storeP(d[i], function() x = 1 end)
 		else
+			t:unregister()
 			d = nil
 			collectgarbage()
 		end
-	end
-	f(nil)
+	end)
+	t:start()
 end

@@ -26,7 +26,7 @@ return function(v, fc)
 			return
 		end
 	end
-	function fc2()
+	local function fc2()
 		n1 = nil
 		n2 = nil
 		n = nil
@@ -34,11 +34,11 @@ return function(v, fc)
 		collectgarbage()
 		fc(nil)
 	end
-	function fc1()
+	local function fc1()
 		f2:close(); f2 = nil
 		if fl then
 			local t = tmr.create()
-			t:register(50,0,function()
+			t:register(10,0,function()
 				if file.exists(n) then
 					file.remove(n1)
 					file.rename(n, n1)
@@ -60,7 +60,7 @@ return function(v, fc)
 	end
 	if not f2:write(f) then
 		local t = tmr.create()
-		t:register(50,0,function()
+		t:register(10,0,function()
 			local cur = f2:seek("set", p)
 			if cur ~= p or not f2:write(f) then
 				f2:close(); f2 = nil
