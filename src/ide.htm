@@ -24,11 +24,12 @@ r = ge("stat"), ls = ge("ls"), src = ge("src"),
 fL = ge("fL"), fN = ge("fN"), fS = ge("fS"), fD = ge("fD");
 
 src.onkeydown = function(e) {
-	if(e.keyCode == 9 || e.which == 9) {
+	if(e.key == 'Tab') {
 		e.preventDefault();
 		var s = src.selectionStart;
-		sv(o, gv(src).substring(0, s) + "\t" + gv(src).substring(src.selectionEnd));
+		sv(src, gv(src).substring(0, s) + "\t" + gv(src).substring(src.selectionEnd));
 		src.selectionEnd = s + 1;
+		o.ch();
 		return false; 
 	}
 };

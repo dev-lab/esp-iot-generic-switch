@@ -49,7 +49,7 @@ function empty(s) {
 }
 
 function fixRN(s) {
-	return s ? s.replace( /\r?\n/g, "\r\n" ) : s;
+	return s ? s.replace( /\r?\n/g, "\n" ) : s;
 }
 
 function createXmlHttp(handler) {
@@ -88,15 +88,7 @@ function upload(n, b, f) {
 	function sCh() {
 		var q = "/fSave?name=" + uri(n) + "&pos=" + p;
 		var d = CHS;
-		while(true) {
-			if((p + d) >= b.length) {
-				q += "&flush=1";
-				break;
-			} else {
-				if(b.charAt(p + d - 1) == '\r') ++d;
-				else break;
-			}
-		}
+		if((p + d) >= b.length) q += "&flush=1";
 		return http(q, b.substr(p, d), function(re, s) {
 			if(s == 200) {
 				p += d;
