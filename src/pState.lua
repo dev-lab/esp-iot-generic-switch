@@ -35,8 +35,7 @@ return function(co,p)
 	tmr.wdclr()
 	local x = 1
 	local i = #gp + 1
-	local t = tmr.create()
-	t:register(10, 1, function(t)
+	tmr.create():alarm(10, 1, function(t)
 		if not x then return end
 		x = nil
 		i = i - 1
@@ -50,5 +49,4 @@ return function(co,p)
 			require("sendJson")(co,d)
 		end
 	end)
-	t:start()
 end

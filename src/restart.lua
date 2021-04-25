@@ -8,9 +8,5 @@ return function(c,p,u)
 		return
 	end
 	require("rs")(c, 200, "")
-	local t = tmr.create()
-	t:register(1000, 0, function(t)
-		node.restart()
-	end)
-	t:start()
+	tmr.create():alarm(1000, 0, function() node.restart() end)
 end

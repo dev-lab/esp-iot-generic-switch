@@ -41,11 +41,7 @@ return function(f)
 	wifi.setmode(m)
 	wifi.sta.autoconnect(1)
 	if m == wifi.STATION then
-		local t = tmr.create()
-		t:register(1000, 1, function(t)
-			chk(m, a, f, t)
-		end)
-		t:start()
+		tmr.create():alarm(1000, 1, function(t) chk(m, a, f, t) end)
 	else
 		setAP(a, f)
 	end

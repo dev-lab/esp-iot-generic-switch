@@ -41,11 +41,7 @@ return function(p)
 		c.sta = d.opt
 		c.ssid = d.ssid
 		c.pwd = d.pwd
-		local t = tmr.create()
-		t:register(2000,0,function(t)
-			node.restart()
-		end)
-		t:start()
+		tmr.create():alarm(2000, 0, function() node.restart() end)
 		r = "Setting AP: "..(c.ssid or "").." ..."
 	elseif m == "admin" then
 		if d.old ~= c.aPwd then

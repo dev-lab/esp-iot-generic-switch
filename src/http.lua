@@ -12,13 +12,11 @@ w:listen(80, function(co)
 		if u > 2 then
 			require("rs")(c, 401)
 		elseif not e then
-			local t = tmr.create()
-			t:register(100,0,function(t)
+			tmr.create():alarm(100, 0, function()
 				if not pcall(function() require(p)(c, g, u) end) then
 					require("rs")(c, 404)
 				end
 			end)
-			t:start()
 		else
 			g = nil
 			require("respFile")(c, p, e)

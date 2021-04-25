@@ -36,8 +36,7 @@ return function(d)
 	z = nil
 	local x = 1
 	local i = #d + 1
-	local t = tmr.create()
-	t:register(10, 1, function(t)
+	tmr.create():alarm(10, 1, function(t)
 		if not x then return end
 		x = nil
 		i = i - 1
@@ -50,5 +49,4 @@ return function(d)
 			collectgarbage()
 		end
 	end)
-	t:start()
 end
